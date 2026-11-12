@@ -1,0 +1,54 @@
+nome: RDP
+
+em:
+  workflow_dispatch:
+
+permissões:
+  conteúdo: leia
+
+empregos:
+  pc-virtual:
+    Executa em: windows-latest
+    tempo limite em minutos: 360
+
+    etapas:
+      - nome: Instalar AnyDesk e mostrar ID e senha
+        tempo limite em minutos: 15
+        executar: |
+          $chars = "abcdefghjkmnpqrstuvwxyz23456789".ToCharArray()
+          $pw = "Ab3-" + (-join ($chars | Get-Random -Count 10))
+
+          $ad = "C:\AnyDesk\AnyDesk.exe"
+          Invoke-WebRequest -Uri "https://download.anydesk.com/AnyDesk.exe" -OutFile "$env:TEMP\AnyDesk.exe"
+          Iniciar-Processo "$env:TEMP\AnyDesk.exe" -ArgumentList "--install C:\AnyDesk --start-with-win --silent"
+
+          for ($i = 0; $i -lt 40 -and -not (Test-Path $ad); $i++) { Start-Sleep -Seconds 3 }
+          se (-não (Caminho-de-Teste $ad)) {
+              Erro de gravação "AnyDesk não foi instalado"
+              sair 1
+          }
+          Início-Aguarde -Segundos 15
+
+          cmd /c "echo $pw | ""$ad"" --set-password"
+          Início-Aguarde-Segundos 5
+
+          $id = ""
+          para ($i = 0; $i -lt 12 -e -não $id; $i++) {
+              $id = (& $ad --get-id | Out-String).Trim()
+              se (-não $id) { Iniciar-Sleep -Segundos 5 }
+          }
+          se (-não $id) {
+              Write-Error "Não consegui obter o ID do AnyDesk"
+              sair 1
+          }
+
+          Write-Host ""
+          Write-Host "=============================="
+          Write-Host "ID: $id"
+          Write-Host "SENHA: $pw"
+          Write-Host "=============================="
+
+      - nome: Manter ativo
+        executar: |
+          $end = (Get-Date).AddMinutes(350)
+          while ((Get-Date) -lt $end) { Start-Sleep -Seconds 60 }
